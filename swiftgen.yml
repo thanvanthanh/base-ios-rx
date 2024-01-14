@@ -1,0 +1,16 @@
+##########
+# Base-ios
+##########
+
+xcassets:
+  inputs: [Sources/Supporting Files/Assets iOS.xcassets,
+           Sources/Supporting Files/Colors iOS.xcassets]
+  outputs:
+    - templateName: swift5
+      output: Sources/Supporting Files/SwiftGen/Assets.swift
+
+strings:
+  - inputs: Sources/Supporting Files/Localizables/en.lproj
+    outputs:
+        templateName: structured-swift5
+        output: Sources/Supporting Files/SwiftGen/Localizables.swift

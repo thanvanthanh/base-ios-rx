@@ -1,0 +1,4 @@
+ENV["CONFIGURATION"] = "Release"
+ENV["APPLE_ID"] = "1474524223"
+
+ENV["BUNDLE_ID"] = "com.thanhthan.release.ios"

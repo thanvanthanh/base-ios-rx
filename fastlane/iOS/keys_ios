@@ -1,0 +1,10 @@
+ENV["TARGET"] = "iOS"
+ENV["SCHEME"] = "Base-ios"
+ENV["TEAM_ID"] = "FX4ADKCC2J"
+ENV["CERTIFICATES_BRANCH"] = "base-is"
+
+ENV["XCWORKSPACE"] = "./Base-ios.xcworkspace"
+ENV["XCODEPROJ"] = "./Base-ios.xcodeproj"
+ENV["BORROW_PLIST"] = "./Sources/Supporting\ Files/Info.plist"
+
+ENV["VERSION"] = "1.0.0"

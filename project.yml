@@ -1,0 +1,66 @@
+name: Base-ios
+
+configs:
+  Debug: debug
+  Release: release
+  Adhoc: release
+  Beta: release
+
+configFiles:
+  Debug: config/iOS/xcconfig/Debug.xcconfig
+  Release: config/iOS/xcconfig/Release.xcconfig
+  Adhoc: config/iOS/xcconfig/Adhoc.xcconfig
+  Beta: config/iOS/xcconfig/Beta.xcconfig
+
+############
+# Options
+############
+
+options:
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+  indentWidth: 4
+  tabWidth: 4
+  bundleIdPrefix: "com.thanhthan"
+
+
+############
+# Settings
+############
+
+settings:
+  PRODUCT_BUNDLE_IDENTIFIER: $(AS_BUNDLE_IDENTIFIER)
+
+############
+# Include
+############
+
+targets:
+  Base-ios:
+    type: application
+    platform: iOS
+    deploymentTarget: "13.0"
+    sources:
+    - Sources
+    attributes:
+      SystemCapabilities:
+        com.apple.Push:
+          enabled: 1
+    configFiles:
+      Debug: config/iOS/xcconfig/Debug.xcconfig
+      Release: config/iOS/xcconfig/Release.xcconfig
+      Adhoc: config/iOS/xcconfig/Adhoc.xcconfig
+      Beta: config/iOS/xcconfig/Beta.xcconfig
+    settings:
+      ASSETCATALOG_COMPILER_APPICON_NAME: $(AS_APP_ICON)
+      SWIFT_VERSION: "5.0"
+      CODE_SIGN_STYLE: "Manual"
+      TARGETED_DEVICE_FAMILY: 1
+    scheme:
+      environmentVariables:
+        ENABLE_SIGNPOST: YES
+    #postCompileScripts:
+      # swiftlint
+      #- name: ⚠️ Swiftlint
+       # script: mint run swiftlint swiftlint --config .swiftlint.yml

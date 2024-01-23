@@ -6,7 +6,8 @@
 //
 
 import UIKit
-import Combine
+import RxSwift
+import RxCocoa
 
 final class SearchViewController: BaseViewController {
     
@@ -17,10 +18,10 @@ final class SearchViewController: BaseViewController {
     @IBOutlet private weak var searchBar: UISearchBar!
     @IBOutlet private weak var tableView: UITableView!
     
-    private var dataSource: UITableViewDiffableDataSource<Section, SearchModel>? = nil
+    private let dataSource = BehaviorRelay<ItemSearchResponse?>(value: nil)
     
-    private let searchTrigger = PassthroughSubject<String, Never>()
-    private let selectUserTrigger = PassthroughSubject<IndexPath, Never>()
+    private let searchTrigger = PublishSubject<String>()
+    private let selectUserTrigger = PublishSubject<IndexPath>()
     
     var data: ItemSearchResponse? {
         didSet {
@@ -41,13 +42,7 @@ final class SearchViewController: BaseViewController {
     }
     
     private func configDataSource() {
-        dataSource = UITableViewDiffableDataSource<Section, SearchModel>(tableView: tableView, cellProvider: { tableView, indexPath, itemIdentifier in
-            let cell = tableView.dequeueReusableCell(cell: SearchTableViewCell.self, indexPath: indexPath)
-            cell.accessoryType = .disclosureIndicator
-            cell.config(data: itemIdentifier)
-            return cell
-        })
-        dataSource?.defaultRowAnimation = .fade
+        tableView.dataSource = self
     }
     
     private func setupTableView() {
@@ -60,47 +55,49 @@ final class SearchViewController: BaseViewController {
         guard let viewmodel = viewModel as? SearchViewModel else { return }
         
         let input = SearchViewModel.Input(
-            loadTrigger: Just(()).eraseToAnyPublisher(),
-            searchTrigger: searchTrigger
-                .throttle(for: 1, scheduler: RunLoop.main, latest: true)
-                .eraseToAnyPublisher(),
-            selectUserTrigger: selectUserTrigger.eraseToAnyPublisher()
-        )
+            loadTrigger: rx.viewWillAppear.mapToVoid().asDriverOnErrorJustComplete(),
+            searchTrigger: searchTrigger.asDriverOnErrorJustComplete(),
+            selectUserTrigger: selectUserTrigger.asDriverOnErrorJustComplete())
         
-        let output = viewmodel.transform(input, disposeBag)
-        output.$response
-            .subscribe(repoSubscriber)
+        let output = viewmodel.transform(input)
+        
+        output.searchResponse
+            .do(onNext: { res in
+                print(res)
+            })
+            .drive(dataSource)
+            .disposed(by: rx.disposeBag)
     }
 }
 
-extension SearchViewController {
-    private var repoSubscriber: Binder<ItemSearchResponse?> {
-        Binder(self) { vc, repos in
-            var snapshot = NSDiffableDataSourceSnapshot<Section, SearchModel>()
-            snapshot.appendSections([.main])
-            snapshot.appendItems(repos?.items ?? [], toSection: .main)
-            vc.dataSource?.apply(snapshot, animatingDifferences: true)
-            DispatchQueue.main.async {
-                guard let repoList = repos?.items else { return }
-                repoList.isEmpty
-                ? vc.tableView.setNoDataView(content: "No Data", icons: "")
-                : vc.tableView.removeNodataView()
-            }
-        }
+extension SearchViewController: UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        dataSource.value?.items?.count ?? 0
     }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell: SearchTableViewCell = tableView.dequeueReusableCell(indexPath: indexPath)
+        
+        if let dataSource = dataSource.value {
+            //cell.config(data: dataSource.items?[indexPath])
+        }
+        return cell
+    }
+    
+    
 }
 
 extension SearchViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         searchBar.endEditing(true)
-        selectUserTrigger.send(indexPath)
+        selectUserTrigger.onNext(indexPath)
     }
 }
 
 extension SearchViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        searchTrigger.send(searchText)
+        searchTrigger.onNext(searchText)
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
@@ -108,6 +105,6 @@ extension SearchViewController: UISearchBarDelegate {
     }
     
     func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
-        searchTrigger.send("")
+        searchTrigger.onNext("")
     }
 }

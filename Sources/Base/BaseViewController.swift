@@ -7,13 +7,15 @@
 
 import UIKit
 import Lottie
-import Combine
+import RxSwift
+import RxCocoa
 
 class BaseViewController: UIViewController {
     
     var viewModel: BaseViewModel
     var disposeBag = DisposeBag()
-        
+    let isLoading = PublishSubject<Bool>()
+    
     private let loadingView = UIView()
     private let animationView = LottieAnimationView(name: "animation")
     
@@ -35,30 +37,35 @@ class BaseViewController: UIViewController {
     func setupUI() {}
     
     func bindViewModel() {
-        viewModel.loadingPublisher
-            .sink { isLoading in
-                self.handleActivityIndicator(state: isLoading)
-            }
-            .store(in: disposeBag)
+        isLoading
+            .distinctUntilChanged()
+            .throttle(.microseconds(100), scheduler: MainScheduler.instance)
+            .asDriverOnErrorJustComplete()
+            .drive(isAnimating)
+            .disposed(by: rx.disposeBag)
         
-        viewModel.errorPublisher
-            .sink { error in
-                if let error = error as? APIError {
-                    Alert(message: error.desc)
-                        .action(.ok)
-                        .show(on: self)
-                } else {
-                    Alert(message: error.localizedDescription)
-                        .action(.ok)
-                        .show(on: self)
-                }
-            }
-            .store(in: disposeBag)
+        viewModel.loading.asDriver()
+            .drive(isLoading)
+            .disposed(by: rx.disposeBag)
+        
+        viewModel.isLoading ~> isLoading ~ rx.disposeBag
     }
     
 }
 
 extension BaseViewController {
+    
+    private var isAnimating: Binder<Bool> {
+        return Binder(UIApplication.shared) { _, isVisible in
+            if isVisible {
+                self.showActivityIndicator()
+                self.view.isUserInteractionEnabled = false
+            } else {
+                self.hideActivityIndicator()
+                self.view.isUserInteractionEnabled = true
+            }
+        }
+    }
     func handleActivityIndicator(state: Bool) {
         state ? showActivityIndicator() : hideActivityIndicator()
     }

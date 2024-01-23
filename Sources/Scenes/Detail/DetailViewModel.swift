@@ -29,13 +29,13 @@ extension DetailViewModel: ViewModelType {
         @Published var detail: SearchModel?
     }
     
-    func transform(_ input: Input, _ disposeBag: DisposeBag) -> Output {
+    func transform(_ input: Input) -> Output {
         let output = Output()
         
-        input.loadTrigger
-            .map { self.repo }
-            .assign(to: \.detail, on: output)
-            .store(in: disposeBag)
+//        input.loadTrigger
+//            .map { self.repo }
+//            .assign(to: \.detail, on: output)
+//            .store(in: disposeBag)
         return output
     }
 }

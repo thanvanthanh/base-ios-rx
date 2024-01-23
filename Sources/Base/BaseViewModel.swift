@@ -6,26 +6,49 @@
 //
 
 import Foundation
-import Combine
+import RxSwift
+import RxRelay
+import Moya
+import NSObject_Rx
 
 class BaseViewModel: NSObject {
     
     // Track Error
-    let errorIndicator = ErrorIndicator()
-    lazy var errorPublisher = errorIndicator.errors.eraseToAnyPublisher()
+    let error = ErrorTracker()
+    let loading = ActivityIndicator()
     
     // Track Loading
-    let activityIndicator = ActivityIndicator()
-    lazy var loadingPublisher = activityIndicator.loading.eraseToAnyPublisher()
-        
+    let isLoading = BehaviorRelay<Bool>(value: false)
+    
     override init() {
         super.init()
+        
+        error
+            .asObservable()
+            .subscribe(onNext: { (error) in
+                if let error = error as? AppError {
+                    print(error.localizedDescription)
+                } else if let error = error as? RxSwift.RxError {
+                    switch error {
+                        case .timeout:
+                            print("Time Out")
+                        default:
+                            return
+                    }
+                } else if let error = error as? Moya.MoyaError {
+                    switch error {
+                        case .objectMapping(_, let response), .jsonMapping(let response), .statusCode(let response):
+                            if let errorResponse = try? response.map(ErrorResponse.self),
+                               let _ = errorResponse.errorDescription {
+                            } else {
+                            }
+                        default:
+                            return
+                    }
+                } else {
+                    print(error.localizedDescription)
+                }
+            })
+            .disposed(by: rx.disposeBag)
     }
-}
-
-protocol ViewModelType {
-    associatedtype Input
-    associatedtype Output
-    
-    func transform(_ input: Input, _ disposeBag: DisposeBag) -> Output
 }

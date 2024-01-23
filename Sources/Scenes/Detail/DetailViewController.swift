@@ -19,22 +19,22 @@ final class DetailViewController: BaseViewController {
     }
     
     override func bindViewModel() {
-        super.bindViewModel()
-        guard let viewmodel = viewModel as? DetailViewModel else { return }
-        
-        let input = DetailViewModel.Input(loadTrigger: Just(()).eraseToAnyPublisher())
-        let output = viewmodel.transform(input, disposeBag)
-        
-        output.$detail.subscribe(detailSubscriber)
+//        super.bindViewModel()
+//        guard let viewmodel = viewModel as? DetailViewModel else { return }
+//        
+//        let input = DetailViewModel.Input(loadTrigger: Just(()).eraseToAnyPublisher())
+//        let output = viewmodel.transform(input, disposeBag)
+//        
+//        output.$detail.subscribe(detailSubscriber)
     }
 
 }
 
-extension DetailViewController {
-    private var detailSubscriber: Binder<SearchModel?> {
-        Binder(self) { vc, data in
-            vc.nameTitle.text = data?.login
-            vc.avatarImage.sd_setImage(with: URL(string: data?.avatarUrl ?? ""))
-        }
-    }
-}
+//extension DetailViewController {
+//    private var detailSubscriber: Binder<SearchModel?> {
+//        Binder(self) { vc, data in
+//            vc.nameTitle.text = data?.login
+//            vc.avatarImage.sd_setImage(with: URL(string: data?.avatarUrl ?? ""))
+//        }
+//    }
+//}

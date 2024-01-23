@@ -6,14 +6,17 @@
 //
 
 import Foundation
-import Combine
+import RxSwift
+import Moya
 
 protocol SearchServiceProtocol: AnyObject {
-    func search(username: String) -> AnyPublisher <ItemSearchResponse?, APIError>
+    func search(username: String) -> Single <ItemSearchResponse>
 }
 
-class SearchRequest: BaseAPI<APIRouter>, SearchServiceProtocol {
-    func search(username: String) -> AnyPublisher<ItemSearchResponse?, APIError> {
-        self.fetchData(target: .search(username: username), resonseseType: ItemSearchResponse.self)
+class SearchRequest: SearchServiceProtocol {
+    func search(username: String) -> Single<ItemSearchResponse> {
+        return ApiConnection.share.request(
+            target: MultiTarget(APIRouter.search(username: username)),
+            type: ItemSearchResponse.self)
     }
 }

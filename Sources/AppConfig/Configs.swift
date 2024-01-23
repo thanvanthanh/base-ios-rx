@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import RxSwift
 
 final class Configs {
     static let share = Configs()
@@ -19,4 +20,7 @@ final class Configs {
         return .production
         #endif
     }
+    
+    let apiTimeOut = RxTimeInterval.seconds(20)
+    let loggingEnabled = false
 }

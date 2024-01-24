@@ -6,9 +6,10 @@
 //
 
 import Foundation
-import Alamofire
 
-enum NetworkErrorType: Int, Error {
-    case UNAUTHORIZED = 401
-    case INVALID_TOKEN = 403
+public enum APIError: Error {
+    case noInternetConnection
+    case actionAlreadyPerforming
+    case networkError(api: Api, error: Error, data: Data?)
+    case none
 }

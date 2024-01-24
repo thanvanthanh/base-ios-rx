@@ -36,6 +36,7 @@ extension SearchViewModel: ViewModelType {
                 guard let self = self else { return .empty() }
                 return self.getSearchData.search(username: username)
                     .trackActivity(self.loading)
+                    .trackError(self.error)
                     .asDriverOnErrorJustComplete()
             }
         

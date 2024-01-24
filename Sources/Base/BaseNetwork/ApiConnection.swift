@@ -6,36 +6,16 @@
 //
 
 import Foundation
-import Moya
-import RxSwift
+import Alamofire
 
-final class ApiConnection {
-    
-    static let share = ApiConnection()
-    
-    private let apiProvider: ApiProvider<MultiTarget>
-    
-    private init() {
-        apiProvider = ApiProvider(plugins: [AuthPlugin()])
-    }
-    
-}
+import Alamofire
 
-extension ApiConnection {
-    
-    func request<T: Codable>(target: MultiTarget, type: T.Type) -> Single<T> {
-        return apiProvider.request(target: target).map(T.self)
-    }
-    
-    func request(target: MultiTarget) -> Single<Int> {
-        return apiProvider.request(target: target)
-    }
-    
-    func request(target: MultiTarget) -> Single<String> {
-        return apiProvider.request(target: target)
-    }
-    
-    func requestArray<T: Codable>(target: MultiTarget, type: T.Type) -> Single<[T]> {
-        return apiProvider.request(target: target).map([T].self)
-    }
+public protocol AppRequestConvertible: URLRequestConvertible {
+    var baseURL: URL { get }
+    var method: HTTPMethod { get }
+    var headers: HTTPHeaders { get }
+    var path: String { get }
+    var parameters: Parameters { get }
+    var encoding: ParameterEncoding { get }
+    var api: Api { get }
 }

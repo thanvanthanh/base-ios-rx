@@ -11,10 +11,6 @@ import RxCocoa
 
 final class SearchViewController: BaseViewController {
     
-    enum Section: Hashable {
-        case main
-    }
-    
     @IBOutlet private weak var searchBar: UISearchBar!
     @IBOutlet private weak var tableView: UITableView!
     
@@ -22,12 +18,6 @@ final class SearchViewController: BaseViewController {
     
     private let searchTrigger = PublishSubject<String>()
     private let selectUserTrigger = PublishSubject<IndexPath>()
-    
-    var data: ItemSearchResponse? {
-        didSet {
-            tableView.reloadData()
-        }
-    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -62,11 +52,16 @@ final class SearchViewController: BaseViewController {
         let output = viewmodel.transform(input)
         
         output.searchResponse
-            .do(onNext: { res in
-                print(res)
+            .do(onNext: { [weak self] data in
+                self?.handleSearchResponse(data)
             })
             .drive(dataSource)
             .disposed(by: rx.disposeBag)
+    }
+    
+    private func handleSearchResponse(_ response: ItemSearchResponse?) {
+        dataSource.accept(response)
+        tableView.reloadData()
     }
 }
 
@@ -79,7 +74,7 @@ extension SearchViewController: UITableViewDataSource {
         let cell: SearchTableViewCell = tableView.dequeueReusableCell(indexPath: indexPath)
         
         if let dataSource = dataSource.value {
-            //cell.config(data: dataSource.items?[indexPath])
+            cell.config(data: dataSource.items?[indexPath.row])
         }
         return cell
     }

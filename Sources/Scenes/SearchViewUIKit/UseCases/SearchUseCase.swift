@@ -14,9 +14,11 @@ protocol SearchServiceProtocol: AnyObject {
 }
 
 class SearchRequest: SearchServiceProtocol {
+    
+    private var api = ApiProvider()
+    
     func search(username: String) -> Single<ItemSearchResponse> {
-        return ApiConnection.share.request(
-            target: MultiTarget(APIRouter.search(username: username)),
-            type: ItemSearchResponse.self)
+        let route = APIRouter.search(username: username)
+        return api.request(route: route, type: ItemSearchResponse.self)
     }
 }

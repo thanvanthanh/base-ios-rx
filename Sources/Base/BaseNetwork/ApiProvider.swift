@@ -6,133 +6,103 @@
 //
 
 import Foundation
-import Moya
+import Alamofire
 import RxSwift
 
-final class ApiProvider<Target: TargetType>: MoyaProvider<Target> {
+public protocol AppNetworkInterface {
+    func request<T: Decodable>(route: AppRequestConvertible,
+                               type: T.Type) -> Single<T>
+    func requestRefreshable<T: Decodable>(route: AppRequestConvertible,
+                                          type: T.Type) -> Single<T>
     
-    //private let repo = AppRepository()
-    
-    init(plugins: [PluginType]) {
-        var plugins = plugins
-        plugins.append(NetworkIndicatorPlugin.indicatorPlugin())
-        if Configs.share.loggingEnabled {
-            plugins.append(NetworkLoggerPlugin(configuration: .init(logOptions: .verbose)))
-        }
-        super.init(plugins: plugins)
-    }
-    
-    func request(target: Target) -> Single<Response> {
-        return connectedToInternet()
-            .timeout(Configs.share.apiTimeOut, scheduler: MainScheduler.instance)
-            .processInternetConnectionError()
-            .filter({ $0 == true })
-            .take(1)
-            .flatMap({ _ in
-                return self
-                    .rx
-                    .request(target)
-                    .timeout(Configs.share.apiTimeOut, scheduler: MainScheduler.instance)
-            })
-            .processResponse(target: target)
-            .observeOn(MainScheduler.instance)
-            .asSingle()
-    }
-    
-    func request(target: Target) -> Single<Int> {
-        return connectedToInternet()
-            .timeout(Configs.share.apiTimeOut, scheduler: MainScheduler.instance)
-            .processInternetConnectionError()
-            .filter({ $0 == true })
-            .take(1)
-            .flatMap({ _ in
-                return self
-                    .rx
-                    .request(target)
-                    .timeout(Configs.share.apiTimeOut, scheduler: MainScheduler.instance)
-            })
-            .processResponse(target: target)
-            .map({ $0.statusCode })
-            .observeOn(MainScheduler.instance)
-            .asSingle()
-    }
-    
-    func request(target: Target) -> Single<String> {
-        return connectedToInternet()
-            .timeout(Configs.share.apiTimeOut, scheduler: MainScheduler.instance)
-            .processInternetConnectionError()
-            .filter({ $0 == true })
-            .take(1)
-            .flatMap({ _ in
-                return self
-                    .rx
-                    .request(target)
-                    .timeout(Configs.share.apiTimeOut, scheduler: MainScheduler.instance)
-            })
-            .mapString()
-            .observeOn(MainScheduler.instance)
-            .asSingle()
-    }
+    func setup(config: URLSessionConfiguration, adapters: [RequestAdapter], interceptors: [RequestInterceptor], eventMonitors: [EventMonitor] )
 }
 
-extension Observable where Element == Response {
-    func processErrorResponse(_ response: Response, target: TargetType) {
-        // handle error message
-        guard response.statusCode > 200,
-              let errorResponse = try? response.map(BaseErrorResponse.self) else { return }
-        // message
-        let processMessageSuccess = processMessage(errorResponse.message)
-        if !processMessageSuccess {
-            // errorDescription
-            processMessage(errorResponse.errors?.first?.errorDescription)
-        }
-    }
+public final class ApiProvider: AppNetworkInterface {
+
+    private var session: Session!
+    private var sessionRefreshable: Session!
     
-    @discardableResult
-    func processMessage(_ message: String?) -> Bool {
-        guard let message = message, !message.isEmpty else { return false }
+    public init() {
+        let config = URLSessionConfiguration.af.default
+        config.timeoutIntervalForRequest = Configs.shared.apiTimeOut
+        config.timeoutIntervalForResource = Configs.shared.apiTimeOut
+        config.allowsCellularAccess = true
         
-        let splittedMessage = message.split(separator: "-")
-        guard splittedMessage.count == 2 else { return false }
+        let xTypeAdapter = XTypeAdapter()
         
-        return true
+        let retryPolicy = RetryPolicy(retryLimit: 3, retryableHTTPMethods: [.get], retryableHTTPStatusCodes: [])
+        
+        var eventMonitors: [EventMonitor] = []
+        
+        #if ENDPOINT_DEBUG
+        let logger = AppMonitor()
+        eventMonitors.append(logger)
+        #endif
+        
+        setup(config: config, adapters: [xTypeAdapter], interceptors: [retryPolicy], eventMonitors: eventMonitors)
     }
-}
-
-extension Observable where Element == Bool {
-    func processInternetConnectionError() -> Observable<Bool> {
-        return self.do(onNext: { (result) in
-            if result == false {
-//                AppHelper.showMessage(title: R.string.localizable.server_internet_connection_error())
-            }
-        })
+    
+    public func setup(config: URLSessionConfiguration, adapters: [RequestAdapter], interceptors: [RequestInterceptor], eventMonitors: [EventMonitor] ) {
+        // Interceptor
+        let compositeInterceptor = Interceptor(adapters: adapters,
+                                               interceptors: interceptors)
+        // create session
+        self.sessionRefreshable = Session(configuration: config, interceptor: compositeInterceptor, eventMonitors: eventMonitors)
+        self.session = Session(configuration: config, eventMonitors: eventMonitors)
     }
-}
-
-extension Observable where Element == Response {
-    func processResponse(target: TargetType) -> Observable<Response> {
-        self.flatMapLatest({ [weak self] response -> Single<Response> in
-            switch response.statusCode {
-            case NetworkErrorType.UNAUTHORIZED.rawValue:
-                return .error(NetworkErrorType.UNAUTHORIZED)
-            case NetworkErrorType.INVALID_TOKEN.rawValue:
-                return .error(NetworkErrorType.INVALID_TOKEN)
-            default:
-                self?.processErrorResponse(response, target: target)
-                return .just(response)
+    
+    func request<T: Decodable>(session: Session,
+                               route: AppRequestConvertible,
+                               type: T.Type,
+                               completion: @escaping (Result<T, Error>) -> Void) -> DataRequest {
+        let request = session
+            .request(route)
+            .validate(statusCode: 200...300)
+            .cURLDescription(calling: { curl in
+                if Configs.shared.loggingAPIEnabled {
+                    LogInfo(curl)
+                }
+            })
+            .responseDecodable(of: T.self) { response in
+                switch response.result {
+                case let .success(data):
+                    completion(.success(data))
+                case let .failure(error):
+                    completion(.failure(APIError.networkError(api: route.api, error: error, data: response.data)))
+                }
             }
-        })
-        .catchError({ [weak self] (error) -> Observable<Response> in
-            guard let self = self else { return .empty() }
-            if case NetworkErrorType.UNAUTHORIZED = error {
-                // TODO: handle force logout
-                return .empty()
-            } else if case NetworkErrorType.INVALID_TOKEN = error {
-                // TODO: handle force logout
-                return .empty()
-            } else {
-                return .error(error)
+        return request
+    }
+    
+    func request<T: Decodable>(session: Session,
+                               route: AppRequestConvertible,
+                               type: T.Type) -> Single<T> {
+        Single<T>.create { [weak self] single in
+            guard let self = self else {
+                return Disposables.create()
             }
-        })
+            let request = self.request(session: session, route: route, type: T.self) { result in
+                switch result {
+                case let .success(data):
+                    single(.success(data))
+                case let .failure(error):
+                    single(.error(error))
+                }
+            }
+            return Disposables.create {
+                request.cancel()
+            }
+        }
+    }
+    
+    public func request<T: Decodable>(route: AppRequestConvertible,
+                                      type: T.Type) -> Single<T> {
+        return request(session: session, route: route, type: type)
+    }
+    
+    public func requestRefreshable<T: Decodable>(route: AppRequestConvertible,
+                                                 type: T.Type) -> Single<T> {
+        return request(session: sessionRefreshable, route: route, type: type)
     }
 }

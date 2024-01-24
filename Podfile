@@ -12,6 +12,9 @@ target 'Base-ios' do
   pod 'RxSwiftExt', '~> 5'
   pod 'Action'
 
+  #Logger
+  pod 'XCGLogger'
+  
  # Networking
   pod 'Moya/RxSwift'
 

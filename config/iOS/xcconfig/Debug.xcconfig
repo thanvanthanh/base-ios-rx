@@ -21,3 +21,5 @@ AS_APP_NAME = Base-ios Debug
 AS_APP_ICON = AppIcon Debug
 /// ProjectEnvironment
 AS_APP_ENVIRONMENT = Debug
+
+OTHER_SWIFT_FLAGS = -D ENDPOINT_DEBUG

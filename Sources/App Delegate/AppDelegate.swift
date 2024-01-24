@@ -18,7 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.window = UIWindow(frame: UIScreen.main.bounds)
         guard let window = window else { return true }
         SearchViewCoordinator.shared.start(data: window)
-        
+        Logger.shared.setUpLog()
         return true
     }
 

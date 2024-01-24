@@ -21,3 +21,5 @@ AS_APP_NAME = Base-ios Beta
 AS_APP_ICON = AppIcon Beta
 /// ProjectEnvironment
 AS_APP_ENVIRONMENT = Beta
+
+OTHER_SWIFT_FLAGS = -D ENDPOINT_BETA

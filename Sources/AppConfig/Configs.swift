@@ -9,7 +9,7 @@ import Foundation
 import RxSwift
 
 final class Configs {
-    static let share = Configs()
+    static let shared = Configs()
     
     private init() {}
     
@@ -21,6 +21,14 @@ final class Configs {
         #endif
     }
     
-    let apiTimeOut = RxTimeInterval.seconds(20)
-    let loggingEnabled = false
+    public var loggingAPIEnabled : Bool {
+        #if ENDPOINT_DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
+    
+    let apiTimeOut: Double = 30
+    let loggingEnabled = true
 }

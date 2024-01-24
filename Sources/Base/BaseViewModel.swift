@@ -27,11 +27,11 @@ class BaseViewModel: NSObject {
             .asObservable()
             .subscribe(onNext: { (error) in
                 if let error = error as? AppError {
-                    print(error.localizedDescription)
+                    LogError(error.localizedDescription)
                 } else if let error = error as? RxSwift.RxError {
                     switch error {
                         case .timeout:
-                            print("Time Out")
+                            LogError("Time Out")
                         default:
                             return
                     }
@@ -39,7 +39,8 @@ class BaseViewModel: NSObject {
                     switch error {
                         case .objectMapping(_, let response), .jsonMapping(let response), .statusCode(let response):
                             if let errorResponse = try? response.map(ErrorResponse.self),
-                               let _ = errorResponse.errorDescription {
+                               let errorDesc = errorResponse.errorDescription {
+                                LogError(errorDesc)
                             } else {
                             }
                         default:

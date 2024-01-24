@@ -6,57 +6,78 @@
 //
 
 import Foundation
-import Moya
+import Alamofire
 
 enum APIRouter {
     case search(username: String)
     case refreshToken(token: String)
 }
 
-extension APIRouter: TargetType {
+extension APIRouter: AppRequestConvertible {
     
     var baseURL: URL {
-        return URL(string: Configs.share.env.baseURL)!
+        return URL(string: Configs.shared.env.baseURL)!
+    }
+    
+    var api: Api {
+        switch self {
+            case .search:
+                return .search
+            case .refreshToken:
+                return .none
+        }
     }
     
     var path: String {
         switch self {
-        case .search:
-            return "/search/users"
-        case .refreshToken:
-            return "/auth/refresh"
+            case .search:
+                return "/search/users"
+            case .refreshToken:
+                return "/auth/refresh"
         }
     }
     
-    var sampleData: Data {
-        return Data()
-    }
-    
-    var method: Moya.Method {
+    var method: HTTPMethod {
         switch self {
-        case .search:
-            return .get
-        case .refreshToken:
-            return .post
+            case .search:
+                return .get
+            case .refreshToken:
+                return .post
         }
     }
     
-    var task: Task {
+    var parameters: Parameters {
         switch self {
-        case let .search(username):
-            return .requestParameters(parameters: ["q": username], encoding: URLEncoding.default)
-        case let .refreshToken(token):
-            return .requestParameters(parameters: ["refresh_token": token], encoding: URLEncoding.default)
+            case .search(let username):
+                return ["q": username]
+            case .refreshToken(let token):
+                return ["token": token]
         }
     }
     
-    var headers: [String : String]? {
+    
+    var headers: HTTPHeaders {
         switch self {
-        default :
-            return ["Content-Type":"application/json",
-                    "accept":"application/json"]
+            default :
+                return HTTPHeaders.default
         }
     }
     
+    var encoding: ParameterEncoding {
+        switch self {
+            case .search:
+                return URLEncoding.default
+            case .refreshToken:
+                return URLEncoding.httpBody
+        }
+    }
+    
+    func asURLRequest() throws -> URLRequest {
+        let url = baseURL.appendingPathComponent(path)
+        var request = URLRequest(url: url)
+        request.method = method
+        request.headers = headers
+        return try encoding.encode(request.asURLRequest(), with: parameters)
+    }
     
 }
